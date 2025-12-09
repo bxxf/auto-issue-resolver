@@ -1,0 +1,33 @@
+{
+  "name": "@bxxf/air-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "air": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@bxxf/air-agent": "workspace:*",
+    "@bxxf/air-core": "workspace:*",
+    "@clack/prompts": "^0.11.0",
+    "dotenv": "^17.2.3",
+    "ink": "^6.5.1",
+    "ink-select-input": "^6.2.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.1"
+  },
+  "devDependencies": {
+    "@bxxf/air-tsconfig": "workspace:*",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.7",
+    "typescript": "^5.7.2"
+  }
+}
