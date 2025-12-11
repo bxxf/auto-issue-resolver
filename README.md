@@ -38,15 +38,6 @@ You give it a GitHub issue URL, and it:
 All of this happens in a secure, isolated [E2B](https://e2b.dev) sandbox - so the agent can't accidentally (or intentionally) mess with your local machine.
 
 ---
-
-## Example: Solving a Real Bug
-
-I re-published the E2B repo with the original bug here: [e2b-before-fix](https://github.com/bxxf/e2b-beforefix-air-test). The repo includes the issue that describes the bug: [Issue #1](https://github.com/bxxf/e2b-beforefix-air-test/issues/1). I intentionally removed some details from the issue to make it more challenging - the agent doesn't get the solution handed to it.
-
-<video src="./imgs/demo.mp4" controls width="100%"></video>
-
----
-
 ## Why This is Exciting
 
 - **Well-written issues are half the solution.** If an issue clearly describes the problem, the fix often writes itself. AIR automates that last step.
@@ -56,6 +47,8 @@ I re-published the E2B repo with the original bug here: [e2b-before-fix](https:/
 - **Extended thinking.** Powered by Claude's reasoning capabilities, the agent can work through complex debugging scenarios step by step.
 
 - **Full visibility.** Watch the agent think in real-time - see its reasoning, tool calls, and decision-making process.
+
+[!Demo](./imgs/demo.png)
 
 ---
 
@@ -258,6 +251,3 @@ This is an experimental project. If you find it interesting:
 
 MIT
 
----
-
-*Built with curiosity and Claude.*
