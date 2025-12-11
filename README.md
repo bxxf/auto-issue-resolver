@@ -48,7 +48,7 @@ All of this happens in a secure, isolated [E2B](https://e2b.dev) sandbox - so th
 
 - **Full visibility.** Watch the agent think in real-time - see its reasoning, tool calls, and decision-making process.
 
-[!Demo](./imgs/demo.png)
+![Demo](./imgs/demo.png)
 
 ---
 
