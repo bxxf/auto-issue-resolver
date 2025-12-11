@@ -14,7 +14,6 @@ export interface AppConfig {
     readonly timeoutMs: number;
   };
   readonly agent: {
-    readonly maxTurns?: number;
     readonly maxThinkingTokens: number;
     readonly defaultModel: string;
     readonly interactive: boolean;

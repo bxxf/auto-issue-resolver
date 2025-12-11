@@ -19,7 +19,6 @@ const configSchema = z.object({
     timeoutMs: z.number().int().positive().default(TIMEOUTS.SANDBOX),
   }),
   agent: z.object({
-    maxTurns: z.number().int().positive().optional(),
     maxThinkingTokens: z.number().int().positive().default(AGENT_DEFAULTS.MAX_THINKING_TOKENS),
     defaultModel: z.string().default(DEFAULT_MODEL),
     interactive: z.boolean().default(AGENT_DEFAULTS.INTERACTIVE),
@@ -55,9 +54,6 @@ let cachedConfig: AppConfig | null = null;
 export function loadConfig(): AppConfig {
   if (cachedConfig) return cachedConfig;
 
-  const maxTurnsEnv = process.env["AGENT_MAX_TURNS"];
-  const maxTurns = maxTurnsEnv ? parseInt(maxTurnsEnv, 10) : undefined;
-
   const rawConfig = {
     github: {
       token: getEnv("GITHUB_TOKEN"),
@@ -70,7 +66,6 @@ export function loadConfig(): AppConfig {
       timeoutMs: getEnvNumber("E2B_TIMEOUT_MS", 600_000),
     },
     agent: {
-      maxTurns: maxTurns && !isNaN(maxTurns) ? maxTurns : undefined,
       maxThinkingTokens: getEnvNumber("AGENT_MAX_THINKING_TOKENS", 16_000),
       defaultModel: getEnvOptional("AGENT_DEFAULT_MODEL", DEFAULT_MODEL),
       interactive: getEnvBoolean("AGENT_INTERACTIVE", true),

@@ -24,7 +24,6 @@ export const TIMEOUTS = {
 } as const;
 
 export const AGENT_DEFAULTS = {
-  MAX_TURNS: undefined as number | undefined,
   MAX_THINKING_TOKENS: 16_000,
   INTERACTIVE: true,
 } as const;

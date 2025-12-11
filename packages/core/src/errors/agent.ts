@@ -20,16 +20,6 @@ export class AgentError extends AppError {
   }
 }
 
-export class AgentMaxTurnsError extends AgentError {
-  constructor(readonly maxTurns: number) {
-    super("execution", `Reached max turns (${maxTurns})`);
-  }
-
-  override get userMessage(): string {
-    return `Agent reached maximum turns (${this.maxTurns}) without completing`;
-  }
-}
-
 export class AgentApiError extends AgentError {
   constructor(
     readonly statusCode: number,

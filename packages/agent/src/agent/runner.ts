@@ -88,7 +88,6 @@ export async function runAgent(options: RunAgentOptions): Promise<Result<AgentRe
     model: config.model,
     systemPrompt: getSystemPrompt(),
     maxThinkingTokens: config.maxThinkingTokens,
-    // No maxTurns - let it run until done
     tools: undefined,
     mcpServers,
     permissionMode: "bypassPermissions",

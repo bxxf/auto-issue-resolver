@@ -25,7 +25,6 @@ export interface AgentConfig {
 export interface AgentProgress {
   readonly phase: AgentPhase;
   readonly turn: number;
-  readonly maxTurns: number;
   readonly message: string;
   readonly timestamp: Date;
 }
