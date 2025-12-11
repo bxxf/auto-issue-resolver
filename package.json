@@ -25,5 +25,8 @@
   "packageManager": "bun@1.2.16",
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.24.3"
   }
 }

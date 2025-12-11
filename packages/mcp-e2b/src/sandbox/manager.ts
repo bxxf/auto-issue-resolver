@@ -1,5 +1,5 @@
 /**
- * E2B Sandbox lifecycle management.
+ * E2B Sandbox lifecycle management with MCP gateway support.
  */
 
 import { Sandbox } from "e2b";
@@ -9,12 +9,22 @@ export interface SandboxConfig {
   apiKey: string;
   timeoutMs: number;
   githubToken?: string;
+  /** Custom template name override (default: uses MCP gateway) */
+  templateName?: string;
+  /** Enable Playwright MCP server for browser automation */
+  enablePlaywright?: boolean;
+}
+
+export interface McpConfig {
+  playwright?: Record<string, unknown>;
 }
 
 export class SandboxManager {
   private sandbox: Sandbox | null = null;
   private repoPath: string | null = null;
   private startedAt: Date | null = null;
+  private mcpUrl: string | null = null;
+  private mcpToken: string | null = null;
 
   constructor(private readonly config: SandboxConfig) {}
 
@@ -32,10 +42,36 @@ export class SandboxManager {
 
   async initialize(): Promise<Result<SandboxInfo, SandboxError>> {
     try {
-      this.sandbox = await Sandbox.create("air-sandbox", {
-        apiKey: this.config.apiKey,
-        timeoutMs: this.config.timeoutMs,
-      });
+      // Build MCP config if browser automation is enabled
+      const mcpConfig: McpConfig = {};
+
+      if (this.config.enablePlaywright) {
+        // Playwright MCP server config
+        mcpConfig.playwright = {};
+      }
+
+      const hasMcp = Object.keys(mcpConfig).length > 0;
+
+      if (hasMcp) {
+        // Use E2B's MCP gateway with configured servers
+        this.sandbox = await Sandbox.create({
+          apiKey: this.config.apiKey,
+          timeoutMs: this.config.timeoutMs,
+          mcp: mcpConfig as Record<string, Record<string, unknown>>,
+        });
+
+        // Get MCP connection details
+        this.mcpUrl = this.sandbox.getMcpUrl();
+        this.mcpToken = await this.sandbox.getMcpToken() ?? null;
+      } else {
+        // Use custom template without MCP gateway
+        const templateName = this.config.templateName ?? "air-sandbox";
+        this.sandbox = await Sandbox.create(templateName, {
+          apiKey: this.config.apiKey,
+          timeoutMs: this.config.timeoutMs,
+        });
+      }
+
       this.startedAt = new Date();
 
       return Result.ok({
@@ -64,11 +100,25 @@ export class SandboxManager {
       this.sandbox = null;
       this.repoPath = null;
       this.startedAt = null;
+      this.mcpUrl = null;
+      this.mcpToken = null;
     }
   }
 
   isInitialized(): boolean {
     return this.sandbox !== null;
+  }
+
+  hasMcpGateway(): boolean {
+    return this.mcpUrl !== null && this.mcpToken !== null;
+  }
+
+  getMcpUrl(): string | null {
+    return this.mcpUrl;
+  }
+
+  getMcpToken(): string | null {
+    return this.mcpToken;
   }
 
   getInfo(): SandboxInfo | null {

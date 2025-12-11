@@ -12,27 +12,21 @@ import { App } from "./components/App.js";
 // Parse CLI arguments
 const args = process.argv.slice(2);
 let issueUrl: string | undefined;
-let maxTurns: number | undefined;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
-  if (arg === "--max-turns" && args[i + 1]) {
-    maxTurns = parseInt(args[i + 1]!, 10);
-    i++;
-  } else if (arg === "--help" || arg === "-h") {
+  if (arg === "--help" || arg === "-h") {
     console.log(`
 AIR - Auto Issue Resolver
 
 Usage:
-  air [issue-url] [options]
+  air [issue-url]
 
 Options:
-  --max-turns <n>  Maximum turns for the agent
   --help, -h       Show this help
 
 Examples:
   air https://github.com/owner/repo/issues/123
-  air --max-turns 50 https://github.com/owner/repo/issues/123
 `);
     process.exit(0);
   } else if (!arg?.startsWith("-")) {
@@ -41,4 +35,4 @@ Examples:
 }
 
 // Render the app
-render(<App initialUrl={issueUrl} maxTurns={maxTurns} />);
+render(<App initialUrl={issueUrl} />);

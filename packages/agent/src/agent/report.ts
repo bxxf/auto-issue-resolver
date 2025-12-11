@@ -25,24 +25,11 @@ export function parseStructuredReport(text: string): LLMReport | null {
     try {
       return JSON.parse(jsonBlockMatch[1]) as LLMReport;
     } catch {
-      // Continue to other formats
+      // Continue
     }
   }
 
-  // Try ``` ... ``` format (code block without language)
-  const codeBlockMatch = text.match(/```\s*([\s\S]*?)\s*```/);
-  if (codeBlockMatch?.[1]) {
-    try {
-      const parsed = JSON.parse(codeBlockMatch[1]);
-      if (typeof parsed === "object" && parsed !== null && "status" in parsed) {
-        return parsed as LLMReport;
-      }
-    } catch {
-      // Continue to other formats
-    }
-  }
-
-  // Try to find raw JSON object in text
+  // Try raw JSON object in text
   const jsonObjectMatch = text.match(/\{[\s\S]*"status"\s*:\s*"[^"]+"/);
   if (jsonObjectMatch) {
     const startIdx = text.indexOf(jsonObjectMatch[0]);

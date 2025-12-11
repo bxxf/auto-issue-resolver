@@ -16,4 +16,5 @@ export {
   getCommitsSince,
   gitCheckout,
 } from "./sandbox/index.js";
-export { createE2BTools, createE2BMcpServer } from "./tools.js";
+
+export { createE2BTools, createE2BMcpServer, type ToolCallbacks } from "./tools.js";

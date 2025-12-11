@@ -18,7 +18,6 @@ export type AgentPhase =
 
 export interface AgentConfig {
   readonly model: string;
-  readonly maxTurns?: number;
   readonly maxThinkingTokens: number;
   readonly interactive: boolean;
 }
@@ -59,10 +58,11 @@ export interface AgentReport {
 
 export type AgentEvent =
   | { readonly type: "phase_change"; readonly phase: AgentPhase; readonly message: string }
-  | { readonly type: "turn_complete"; readonly turn: number; readonly maxTurns: number }
+  | { readonly type: "turn_complete"; readonly turn: number }
   | { readonly type: "tool_call"; readonly tool: string; readonly input: unknown }
   | { readonly type: "tool_result"; readonly tool: string; readonly success: boolean }
   | { readonly type: "thinking"; readonly content: string }
   | { readonly type: "message"; readonly content: string }
+  | { readonly type: "ask_user"; readonly question: string; readonly context: string; readonly resolve: (answer: string) => void }
   | { readonly type: "error"; readonly error: string }
   | { readonly type: "complete"; readonly report: AgentReport };

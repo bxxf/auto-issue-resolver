@@ -43,21 +43,9 @@ All of this happens in a secure, isolated [E2B](https://e2b.dev) sandbox - so th
 
 I re-published the E2B repo with the original bug here: [e2b-before-fix](https://github.com/bxxf/e2b-beforefix-air-test). The repo includes the issue that describes the bug: [Issue #1](https://github.com/bxxf/e2b-beforefix-air-test/issues/1). I intentionally removed some details from the issue to make it more challenging - the agent doesn't get the solution handed to it.
 
-![Demo Screenshot](./imgs/demo-1.png)
-![Demo Screenshot 2](./imgs/demo-2.png)
-![Demo Screenshot 3](./imgs/demo-3.png)
+<video src="./imgs/demo.mp4" controls width="100%"></video>
 
-**What the agent did autonomously:**
-
-1. **Cloned the repo** and explored the project structure
-2. **Created a reproduction case** - wrote a minimal test script to trigger the ESM file path bug
-3. **Identified the root cause** - traced the issue to `getCallerDirectory` returning `file://` URLs instead of proper paths in ESM modules
-4. **Implemented the fix** - modified `utils.ts` to handle file URLs by stripping the `file://` prefix
-5. **Verified the fix** - ran the reproduction case again to confirm it works
-6. **Ran existing tests** - executed the test suite to ensure no regressions
-7. **Created additional tests** - wrote new ESM-specific tests to validate the fix edge cases
-
-All of this happened without human intervention. The agent spent ~7 minutes methodically working through the problem, making hypotheses, testing them, and iterating until it found a working solution.
+---
 
 ## Why This is Exciting
 
@@ -71,88 +59,11 @@ All of this happened without human intervention. The agent spent ~7 minutes meth
 
 ---
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| **AI** | [Claude Agent SDK](https://github.com/anthropics/claude-code) with extended thinking |
-| **Sandbox** | [E2B](https://e2b.dev) cloud sandboxes for secure code execution |
-| **CLI** | [Ink](https://github.com/vadimdemedes/ink) (React for the terminal) |
-| **Build** | [Turborepo](https://turbo.build/repo) monorepo with [Bun](https://bun.sh) |
-| **Language** | TypeScript (ESM) - for the fast prototyping |
-| **Validation** | [Zod](https://zod.dev) for runtime type safety |
-
----
-
-## Architecture
-
-```
-auto-issue-resolver/
-├── apps/
-│   └── cli/                        # Interactive terminal UI (Ink)
-│       └── src/
-│           ├── components/         # React components for terminal UI
-│           │   ├── App.tsx         # Main app orchestration
-│           │   ├── AgentView.tsx   # Agent event display
-│           │   ├── Results.tsx     # Results display
-│           │   ├── ToolCall.tsx    # Tool call formatting
-│           │   └── ...
-│           └── index.tsx           # Entry point
-│
-├── packages/
-│   ├── agent/                      # Issue resolver agent
-│   │   └── src/
-│   │       ├── agent/              # Agent core logic
-│   │       │   ├── runner.ts       # Main query execution
-│   │       │   ├── report.ts       # Report parsing & building
-│   │       │   └── messages.ts     # Message processing
-│   │       └── prompts.ts          # System prompts & issue formatting
-│   │
-│   ├── core/                       # Shared utilities & types
-│   │   └── src/
-│   │       ├── types/              # TypeScript types (modular)
-│   │       │   ├── branded.ts      # Branded types (IssueNumber, etc.)
-│   │       │   ├── result.ts       # Result<T,E> pattern
-│   │       │   ├── github.ts       # GitHub-related types
-│   │       │   ├── agent.ts        # Agent types
-│   │       │   └── sandbox.ts      # Sandbox types
-│   │       ├── errors/             # Error classes (modular)
-│   │       │   ├── base.ts         # Base AppError class
-│   │       │   ├── config.ts       # Config errors
-│   │       │   ├── github.ts       # GitHub errors
-│   │       │   ├── sandbox.ts      # Sandbox errors
-│   │       │   └── agent.ts        # Agent errors
-│   │       ├── config.ts           # Environment configuration
-│   │       ├── github.ts           # GitHub API client
-│   │       └── logger.ts           # Logging utility
-│   │
-│   └── mcp-e2b/                    # E2B sandbox as MCP server
-│       └── src/
-│           ├── sandbox/            # Sandbox operations (modular)
-│           │   ├── manager.ts      # Sandbox lifecycle
-│           │   ├── repo.ts         # Git operations
-│           │   ├── files.ts        # File operations
-│           │   └── commands.ts     # Command execution
-│           └── tools.ts            # MCP tool definitions
-```
-
-### How It Works
-
-1. **CLI** (`apps/cli`) provides the interactive terminal interface
-2. **Agent** (`packages/agent`) orchestrates the issue resolution using Claude Agent SDK
-3. **MCP Server** (`packages/mcp-e2b`) exposes E2B sandbox operations as tools Claude can use
-4. **Core** (`packages/core`) provides shared config, types, and GitHub client
-
-The agent uses **MCP (Model Context Protocol)** to interact with the sandbox. This means Claude doesn't have direct filesystem access - it can only use the sandboxed tools we expose.
-
----
-
 ## Getting Started
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) (v1.2+)
-- [Node.js](https://nodejs.org) (v20+)
+- [Bun](https://bun.sh) (v1.2+) or [Node.js](https://nodejs.org) (v20+)
 
 ### API Keys Required
 
@@ -165,7 +76,7 @@ You'll need API keys from:
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-username/auto-issue-resolver.git
+git clone https://github.com/bxxf/auto-issue-resolver.git
 cd auto-issue-resolver
 
 # Install dependencies
@@ -188,40 +99,125 @@ ANTHROPIC_API_KEY=sk-ant-...
 E2B_API_KEY=e2b_...
 
 # Optional (defaults shown)
-AGENT_MAX_TURNS=50
 E2B_TIMEOUT_MS=600000
 AGENT_DEFAULT_MODEL=claude-sonnet-4.5-20250929
 ```
 
-### Usage
+### CLI Usage
 
 ```bash
 # Build the project
 bun run build
 
-# Run the CLI
+# Run interactively
 bun run air
+
+# Or with issue URL directly
+bun run air https://github.com/owner/repo/issues/123
 ```
 
 Then paste a GitHub issue URL when prompted (e.g., `https://github.com/owner/repo/issues/123`).
 
+### Programmatic Usage
+
+```typescript
+import { runAgent } from "@bxxf/air-agent";
+import { parseIssueUrl, createGitHubClient } from "@bxxf/air-core";
+
+// Fetch issue details
+const github = createGitHubClient({ token: process.env.GITHUB_TOKEN! });
+const parsed = parseIssueUrl("https://github.com/owner/repo/issues/123");
+if (!parsed.ok) throw new Error(parsed.error.message);
+
+const [issue, repo] = await Promise.all([
+  github.fetchIssue(parsed.value),
+  github.fetchRepo(parsed.value),
+]);
+
+if (!issue.ok || !repo.ok) throw new Error("Failed to fetch issue/repo");
+
+// Run the agent
+const result = await runAgent({
+  issue: issue.value,
+  repo: repo.value,
+  config: {
+    model: "claude-sonnet-4.5-20250929",
+    maxThinkingTokens: 10000,
+    interactive: false,
+  },
+  sandboxConfig: {
+    apiKey: process.env.E2B_API_KEY!,
+    timeoutMs: 600000,
+    githubToken: process.env.GITHUB_TOKEN,
+  },
+  onEvent: (event) => {
+    switch (event.type) {
+      case "tool_call":
+        console.log(`Tool: ${event.tool}`);
+        break;
+      case "message":
+        console.log(`Agent: ${event.content}`);
+        break;
+      case "ask_user":
+        // Agent needs user input
+        console.log(`Question: ${event.question}`);
+        event.resolve("your answer here");
+        break;
+      case "complete":
+        console.log("Done!", event.report.status);
+        break;
+    }
+  },
+});
+
+if (result.ok) {
+  console.log("Report:", result.value);
+} else {
+  console.error("Error:", result.error);
+}
+```
+
+---
+
+### How It Works
+
+1. **CLI** (`apps/cli`) provides the interactive terminal interface
+2. **Agent** (`packages/agent`) orchestrates the issue resolution using Claude Agent SDK
+3. **MCP Server** (`packages/mcp-e2b`) exposes E2B sandbox operations as tools Claude can use
+4. **Core** (`packages/core`) provides shared config, types, and GitHub client
+
 ---
 
 ## Sandbox Tools
-
-The agent has access to these sandboxed operations:
 
 | Tool | Description |
 |------|-------------|
 | `sandbox_clone` | Clone a GitHub repository |
 | `sandbox_exec` | Execute shell commands (npm, tests, etc.) |
 | `sandbox_read` | Read file contents |
-| `sandbox_write` | Create or modify files |
+| `sandbox_write` | Write/overwrite entire file |
+| `sandbox_edit` | Replace string in file (surgical edits) |
 | `sandbox_ls` | List directory contents |
 | `sandbox_grep` | Search files with regex |
-| `sandbox_url` | Get public URL for testing web servers |
 | `sandbox_git_log` | Check recent commits |
 | `sandbox_git_checkout` | Switch to specific commit/branch |
+| `sandbox_bisect` | Git bisect to find bad commit |
+| `sandbox_browser` | Navigate URL + screenshot (for UI bugs) |
+| `sandbox_url` | Get public URL for testing web servers |
+| `ask_user` | Ask user for input when stuck |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **AI** | [Claude Agent SDK](https://github.com/anthropics/claude-code) with extended thinking |
+| **Sandbox** | [E2B](https://e2b.dev) cloud sandboxes for secure code execution |
+| **CLI** | [Ink](https://github.com/vadimdemedes/ink) (React for the terminal) |
+| **Build** | [Turborepo](https://turbo.build/repo) monorepo with [Bun](https://bun.sh) |
+| **Language** | TypeScript (ESM) |
+| **Validation** | [Zod](https://zod.dev) for runtime type safety |
 
 ---
 
@@ -239,13 +235,11 @@ This is a work in progress. Known limitations:
 ## Roadmap
 
 - [ ] Automatic PR creation with fix and comments in the issue
-- [ ] **Multi-agent architecture** - spawn multiple agents to explore different parts of the codebase in parallel
-- [ ] **Efficiency & speed** - optimize how the agent navigates codebases, reducing token usage and time-to-fix
-- [ ] **Enhanced terminal UX** - make the CLI as friendly and informative as possible with real-time progress
-- [ ] **Detailed fix reports** - generate thorough reports explaining the root cause, the fix, and step-by-step instructions to apply it manually
-- [ ] Batch processing of multiple issues
+- [ ] Multi-agent architecture - spawn multiple agents to explore different parts of the codebase in parallel
+- [ ] Efficiency & speed - optimize how the agent navigates codebases, reducing token usage and time-to-fix
 - [ ] GitHub webhook integration - automatically process new issues
 - [ ] Web UI alternative to CLI to monitor progress / view reports
+- [ ] Batch processing of multiple issues
 - [ ] Persistent agent memory across sessions
 
 ---

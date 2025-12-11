@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Box, Text, useApp, useInput } from "ink";
+import TextInput from "ink-text-input";
 import {
   loadConfig,
   getConfig,
@@ -19,14 +20,15 @@ import { Setup } from "./Setup.js";
 import { AgentView } from "./AgentView.js";
 import { Results } from "./Results.js";
 
-type AppPhase = "setup" | "loading" | "running" | "complete" | "error";
+type AppPhase = "setup" | "loading" | "running" | "asking" | "complete" | "error";
 
-interface AppProps {
-  initialUrl?: string;
-  maxTurns?: number;
+interface PendingQuestion {
+  question: string;
+  context: string;
+  resolve: (answer: string) => void;
 }
 
-export function App({ initialUrl, maxTurns }: AppProps) {
+export function App({ initialUrl }: { initialUrl?: string }) {
   const { exit } = useApp();
 
   const [phase, setPhase] = useState<AppPhase>("setup");
@@ -37,6 +39,18 @@ export function App({ initialUrl, maxTurns }: AppProps) {
   const [repo, setRepo] = useState<GitHubRepo | null>(null);
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [report, setReport] = useState<AgentReport | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState<PendingQuestion | null>(null);
+  const [userAnswer, setUserAnswer] = useState("");
+
+  // Extract phase info from events
+  const currentPhaseInfo = useMemo(() => {
+    const phaseEvents = events.filter((e) => e.type === "phase_change");
+    const lastPhase = phaseEvents[phaseEvents.length - 1];
+    if (lastPhase?.type === "phase_change") {
+      return { phase: lastPhase.phase, message: lastPhase.message };
+    }
+    return { phase: "initializing", message: "Starting..." };
+  }, [events]);
 
   useEffect(() => {
     try {
@@ -95,7 +109,16 @@ export function App({ initialUrl, maxTurns }: AppProps) {
     }
   };
 
-  const handleStart = async (selectedModel: string) => {
+  const handleAnswerSubmit = useCallback(() => {
+    if (pendingQuestion && userAnswer.trim()) {
+      pendingQuestion.resolve(userAnswer.trim());
+      setPendingQuestion(null);
+      setUserAnswer("");
+      setPhase("running");
+    }
+  }, [pendingQuestion, userAnswer]);
+
+  const handleStart = async (model: string) => {
     if (!issue || !repo) return;
 
     setPhase("running");
@@ -105,6 +128,15 @@ export function App({ initialUrl, maxTurns }: AppProps) {
 
     const onEvent = (event: AgentEvent) => {
       setEvents((prev) => [...prev, event]);
+
+      if (event.type === "ask_user") {
+        setPendingQuestion({
+          question: event.question,
+          context: event.context,
+          resolve: event.resolve,
+        });
+        setPhase("asking");
+      }
 
       if (event.type === "complete") {
         setReport(event.report);
@@ -122,8 +154,7 @@ export function App({ initialUrl, maxTurns }: AppProps) {
         issue,
         repo,
         config: {
-          model: selectedModel,
-          maxTurns: maxTurns ?? config.agent.maxTurns,
+          model,
           maxThinkingTokens: config.agent.maxThinkingTokens,
           interactive: true,
         },
@@ -131,6 +162,7 @@ export function App({ initialUrl, maxTurns }: AppProps) {
           apiKey: config.e2b.apiKey,
           timeoutMs: config.e2b.timeoutMs,
           githubToken: config.github.token,
+          enablePlaywright: true,
         },
         onEvent,
       });
@@ -147,14 +179,19 @@ export function App({ initialUrl, maxTurns }: AppProps) {
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Header />
+      <Header
+        issue={phase !== "setup" || issue ? issue : undefined}
+        phase={phase === "running" || phase === "asking" ? currentPhaseInfo.phase : undefined}
+        phaseMessage={phase === "running" || phase === "asking" ? currentPhaseInfo.message : undefined}
+        isRunning={phase === "running" || phase === "asking"}
+      />
 
       {phase === "error" && (
         <Box flexDirection="column" marginTop={1}>
-          <Text color="red" bold>
-            Error
-          </Text>
-          <Text color="red">{error}</Text>
+          <Text color="red" bold>Error</Text>
+          <Box marginTop={1}>
+            <Text color="red">{error}</Text>
+          </Box>
           <Box marginTop={1}>
             <Text dimColor>Press Ctrl+C to exit</Text>
           </Box>
@@ -179,13 +216,33 @@ export function App({ initialUrl, maxTurns }: AppProps) {
         </Box>
       )}
 
-      {phase === "running" && (
+      {(phase === "running" || phase === "asking" || phase === "complete") && (
         <AgentView events={events} />
       )}
 
-      {phase === "complete" && report && (
-        <Results report={report} />
+      {phase === "asking" && pendingQuestion && (
+        <Box flexDirection="column" marginTop={1} borderStyle="round" borderColor="yellow" padding={1}>
+          <Text color="yellow" bold>Agent needs your input:</Text>
+          <Box marginTop={1}>
+            <Text>{pendingQuestion.question}</Text>
+          </Box>
+          {pendingQuestion.context && (
+            <Box marginTop={1}>
+              <Text dimColor>Context: {pendingQuestion.context}</Text>
+            </Box>
+          )}
+          <Box marginTop={1}>
+            <Text color="cyan">{"> "}</Text>
+            <TextInput
+              value={userAnswer}
+              onChange={setUserAnswer}
+              onSubmit={handleAnswerSubmit}
+            />
+          </Box>
+        </Box>
       )}
+
+      {phase === "complete" && report && <Results report={report} />}
     </Box>
   );
 }

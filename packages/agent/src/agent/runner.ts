@@ -6,6 +6,7 @@ import {
   query,
   type Options,
   type SDKResultMessage,
+  type McpServerConfig,
 } from "@anthropic-ai/claude-agent-sdk";
 import {
   Result,
@@ -33,19 +34,63 @@ export async function runAgent(options: RunAgentOptions): Promise<Result<AgentRe
   const { issue, repo, config, sandboxConfig, onEvent, signal } = options;
   const startTime = Date.now();
 
-  const { server: e2bServer, cleanup: cleanupSandbox, manager: sandboxManager } = createE2BMcpServer(sandboxConfig);
+  // Create a promise-based mechanism for user questions
+  const pendingQuestion: { reject: ((err: Error) => void) | null } = { reject: null };
 
-  onEvent?.({ type: "phase_change", phase: "initializing", message: "Starting agent..." });
+  const onAskUser = (question: string, context: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      pendingQuestion.reject = reject;
+      onEvent?.({
+        type: "ask_user",
+        question,
+        context,
+        resolve: (answer: string) => {
+          pendingQuestion.reject = null;
+          resolve(answer);
+        },
+      });
+    });
+  };
+
+  const { server: e2bServer, cleanup: cleanupSandbox, manager: sandboxManager } = createE2BMcpServer(
+    sandboxConfig,
+    { onAskUser }
+  );
+
+  onEvent?.({ type: "phase_change", phase: "initializing", message: "Starting sandbox..." });
+
+  // Always initialize sandbox early
+  const initResult = await sandboxManager.initialize();
+  if (!initResult.ok) {
+    onEvent?.({ type: "error", error: `Sandbox init failed: ${initResult.error.message}` });
+    return Result.err(initResult.error);
+  }
+
+  const mcpServers: Record<string, McpServerConfig> = {
+    "e2b": e2bServer,
+  };
+
+  // Add Playwright MCP if enabled and available
+  if (sandboxConfig.enablePlaywright && sandboxManager.hasMcpGateway()) {
+    const mcpUrl = sandboxManager.getMcpUrl();
+    const mcpToken = sandboxManager.getMcpToken();
+    if (mcpUrl && mcpToken) {
+      mcpServers["playwright"] = {
+        type: "http",
+        url: mcpUrl,
+        headers: { Authorization: `Bearer ${mcpToken}` },
+      };
+      onEvent?.({ type: "phase_change", phase: "initializing", message: `Playwright MCP at ${mcpUrl}` });
+    }
+  }
 
   const queryOptions: Options = {
     model: config.model,
     systemPrompt: getSystemPrompt(),
     maxThinkingTokens: config.maxThinkingTokens,
-    ...(config.maxTurns !== undefined && { maxTurns: config.maxTurns }),
+    // No maxTurns - let it run until done
     tools: undefined,
-    mcpServers: {
-      "e2b": e2bServer,
-    },
+    mcpServers,
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
     includePartialMessages: config.interactive,
@@ -69,7 +114,7 @@ export async function runAgent(options: RunAgentOptions): Promise<Result<AgentRe
 
         case "assistant":
           turnCount++;
-          onEvent?.({ type: "turn_complete", turn: turnCount, maxTurns: config.maxTurns ?? 0 });
+          onEvent?.({ type: "turn_complete", turn: turnCount });
           processAssistantMessage(message, onEvent);
           break;
 
@@ -87,6 +132,10 @@ export async function runAgent(options: RunAgentOptions): Promise<Result<AgentRe
       }
     }
   } catch (error) {
+    // Reject any pending question
+    if (pendingQuestion.reject) {
+      pendingQuestion.reject(new Error("Agent terminated"));
+    }
     onEvent?.({ type: "error", error: error instanceof Error ? error.message : String(error) });
     return Result.err(error instanceof Error ? error : new Error(String(error)));
   } finally {
