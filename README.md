@@ -2,7 +2,7 @@
 
 > **This project is a work in progress.** Features may be incomplete, APIs may change, and there will be bugs. Contributions and feedback welcome!
 
-![Banner](./imgs/banner.png)
+![Banner](./docs-static-assets/banner.png)
 
 ---
 
@@ -48,7 +48,7 @@ All of this happens in a secure, isolated [E2B](https://e2b.dev) sandbox - so th
 
 - **Full visibility.** Watch the agent think in real-time - see its reasoning, tool calls, and decision-making process.
 
-![Demo](./imgs/demo.png)
+![Demo](./docs-static-assets/demo.png)
 
 ---
 
